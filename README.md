@@ -1,5 +1,7 @@
 # calc
 
+![alt tag](calc_scn.png)
+
 This is a terminal-based Reverse Polish notation (RPN) calculator.
 
 Building:
