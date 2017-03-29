@@ -77,10 +77,7 @@ int main(){
 		}
 
 		// If ENTER, stack or duplicate
-		// Getting terminal dimensions
-		struct winsize size;
-		ioctl(STDOUT_FILENO,TIOCGWINSZ,&size);
-		if(c == 13 && stack.size() < size.ws_row-1){
+		if(c == 13){
 
 			// Stack input buffer
 			if(in_buf.size()!=0){
@@ -173,27 +170,36 @@ void display(std::stack<double> raw_stack, std::string in_buf, int dec_plcs){
 		stack.push(raw_stack.top());
 		raw_stack.pop();
 	}
-
-	// Stack index size
-	int stack_index = (stack.size()==0)?1:1+log((double)stack.size())/log(10);
-
-	// Getting terminal dimensions
-	struct winsize size;
-	ioctl(STDOUT_FILENO,TIOCGWINSZ,&size);
-	int width = size.ws_col-2-stack_index;
 	
 	// Cleargin screen
 	system("tput reset");
 
+	// Getting terminal dimensions
+	struct winsize size;
+	ioctl(STDOUT_FILENO,TIOCGWINSZ,&size);
+
+	// Number of stack entries to print
+	int num_stack_print = (size.ws_row-2 < stack.size())?size.ws_row-2:stack.size();
+
+	// Number of empty rows
+	int empty_rows = size.ws_row-1-num_stack_print;
+
+	// Left-zero padding for stack indexes
+	int stack_index = (stack.size()==0)?1:1+log((double)(num_stack_print))/log(10);
+
+	int width = size.ws_col-2-stack_index;
+
 	// Scrolling to the bottom
-	for(int i = 0; i < size.ws_row-stack.size()-1; i++)
+	for(int i = 0; i < empty_rows; i++)
 		printf("\n");
 
 	// Printing stack
 	int i = stack.size(); 
 	while(!stack.empty()){
-		printf("%*d: %*.*f\n",stack_index,i--,width,dec_plcs,stack.top());
+		if(i < size.ws_row)
+			printf("%*d: %*.*f\n",stack_index,i,width,dec_plcs,stack.top());
 		stack.pop();
+		i--;
 	}
 
 	// Decimal places
