@@ -8,27 +8,31 @@
 #include <stdexcept>
 #include <cmath>
 
-using namespace std;
+// Counting decimal places
+int get_dec_plcs(std::string in_buf);
 
-void display(stack<double> raw_stk, string num, int dec_plcs, int help);
+// Printing GUI
+void display(std::stack<double> raw_stack, std::string in_buf, int dec_plcs);
 
 int main(){
 
+	// Disabling terminal echo
+	system("/bin/stty -echo");
+
 	// Buffers
-	stack<double> stk;
-	stack<double> stk_bkp;
-	string num = string("");
+	std::stack<double> stack;
+	std::stack<double> stack_bkp;
+	std::string in_buf = std::string("");
 	double b = 0;
 	double a = 0;
 	char c = 0;
 	int dec_plcs = 3;
-	int help = 0;
 
 	// Main loop
 	for(;;){
 
-		// Print stack
-		display(stk,num,dec_plcs,help);
+		// Print GUI
+		display(stack,in_buf,dec_plcs);
 
 		// Input
 		system("/bin/stty raw");
@@ -43,168 +47,175 @@ int main(){
 
 		// Stack restore
 		if(c == 'R' || c == 'r'){
-			stk = stk_bkp;
+			stack = stack_bkp;
 			continue;
 		}
 
 		// Stack backup
-		stk_bkp = stk;
+		stack_bkp = stack;
 
-		// Help
-		if(c == 'H' || c == 'h'){
-			help = !help;
-			continue;
-		}
-
-		// Decimal places
+		// Change decimal places
 		if(c == 'P' || c == 'p'){
-			if(num.size()!=0){
-				dec_plcs = stoi(num);
-				num = string("");
+			if(in_buf.size()!=0){
+				dec_plcs = stoi(in_buf);
+				in_buf = std::string("");
 			}
 			continue;
 		}
 
-		// If BACKSPACE, delete
+		// If BACKSPACE
 		if(c == 127){
-			if(num.size()!=0)
-				num.pop_back();
+
+			// Delete from input buffer
+			if(in_buf.size()!=0) in_buf.pop_back();
 			else
-			if(stk.size() >= 1)
-				stk.pop();
+
+			// Delete from stack
+			if(stack.size() >= 1) stack.pop();
+
 			continue;
 		}
 
 		// If ENTER, stack or duplicate
 		if(c == 13){
-			if(num.size()!=0){
-				stk.push(stod(num));
-				num = string("");
+
+			// Stack input buffer
+			if(in_buf.size()!=0){
+				stack.push(stod(in_buf));
+				in_buf = std::string("");
 			}else
-				stk.push(stk.top());
+
+			// Duplicate top tack entry
+			stack.push(stack.top());
+
 			continue;
 		}
 
-		// If ESC, clear input
+		// If ESC clear input buffer
 		if(c == 27){
-			if(num.size()!=0)
-				num = string("");
+			in_buf = std::string("");
 			continue;
 		}
 
-		// If numerical, concat
-		if((c >= '0' && c <= '9') || c == '.'){
-			num = num+string(1,c);			
+		// If numerical concatenate input buffer
+		if((c >= '0' && c <= '9') || (c == '.' && get_dec_plcs(in_buf) == -1)){
+			in_buf += std::string(1,c);
 			continue;
 		}
 
-		// If operand, operate
-		if(stk.size() >= 1 && num.size()!=0){
-			b = stod(num);
-			a = stk.top(); stk.pop();
+		// If invalid operand, continue
+		if(c != '+' && c != '-' && c != '*' && c != '/' && c != '^' && c != 'L' && c != 'l' && c != 32)		
+			continue;
+
+		// If buffer not empty and >=1 stack entry
+		if(in_buf.size()!=0 && stack.size() >= 1){
+			b = stod(in_buf);
+			a = stack.top(); stack.pop();
 		}else 
-		if(stk.size() >= 2){
-			b = stk.top(); stk.pop();
-			a = stk.top(); stk.pop();
+
+		// If >=2 stack entries
+		if(stack.size() >= 2){
+			b = stack.top(); stack.pop();
+			a = stack.top(); stack.pop();
 		}else
-			continue;
+
+		// Not enough operands
+		continue;
 
 		// Operations
-		num = string("");
+		in_buf = std::string("");
 		switch(c){
-			case '+':{
-				double r = a+b;
-				stk.push(r);
-				break;
-			}
-			case '-':{
-				double r = a-b;
-				stk.push(r);
-				break;
-			}
-			case '*':{
-				double r = a*b;
-				stk.push(r);
-				break;
-			}
-			case '/':{
-				double r = a/b;
-				stk.push(r);
-				break;
-			}
-			case '^':{
-				double r = pow(a,b);
-				stk.push(r);
-				break;
-			}
-			case 'L': case 'l':{
-				double r = log(a)/log(b);
-				stk.push(r);
-				break;
-			}
-			case 32:{
-				stk.push(b);
-				stk.push(a);
-				break;
-			}
+			case '+':
+				stack.push(a+b); continue;
+			case '-':
+				stack.push(a-b); continue;
+			case '*':
+				stack.push(a*b); continue;
+			case '/':
+				stack.push(a/b); continue;
+			case '^':
+				stack.push(pow(a,b)); continue;
+			case 'L': case 'l':
+				stack.push(log(a)/log(b)); continue;
+			case 32: // SPACE: swap
+				stack.push(b);
+				stack.push(a);
+				continue;
 		}
+
+		// Pushing operands back to stack
+		stack.push(a);
+		stack.push(b);
 
 	}
 
 	return 0;
 }
 
-void display(stack<double> raw_stk, string num, int dec_plcs, int help){
+// Counting decimal places
+int get_dec_plcs(std::string in_buf){
+	int c = in_buf.size();
+	while(--c >= 0)
+		if(in_buf.at(c) == '.') break;
+	return c;
+}
+
+void display(std::stack<double> raw_stack, std::string in_buf, int dec_plcs){
 
 	// Ordering stack 
-	stack<double> stk;
-	while(!raw_stk.empty()){
-		stk.push(raw_stk.top());
-		raw_stk.pop();
+	std::stack<double> stack;
+	while(!raw_stack.empty()){
+		stack.push(raw_stack.top());
+		raw_stack.pop();
 	}
 
 	// Getting terminal dimensions
 	struct winsize size;
 	ioctl(STDOUT_FILENO,TIOCGWINSZ,&size);
 	int width = size.ws_col-3;
-	int cases = size.ws_col-3;
 	
 	// Cleargin screen
 	system("tput reset");
-	if(help)
-		printf("| Restore: R | Clear input: ESC | Swap: SPACE  | Dec plcs: P  | \n");
 
-	// Bar
-	for(int i = 0; i < size.ws_col; i++)
-		printf("T");
-
-	for(int i = 0; i < size.ws_row-stk.size()-2; i++)
+	// Scrolling to the bottom
+	for(int i = 0; i < size.ws_row-stack.size()-1; i++)
 		printf("\n");
 
 	// Printing stack
-	int i = stk.size(); 
-	while(!stk.empty()){
-		printf("%d: %*.*f\n",i--,width,dec_plcs,stk.top());
-		stk.pop();
+	int i = stack.size(); 
+	while(!stack.empty()){
+		printf("%d: %*.*f\n",i--,width,dec_plcs,stack.top());
+		stack.pop();
 	}
 
-	// Printing current input
-	int c = num.size();
-	while(--c >= 0)
-		if(num.at(c) == '.') break;
-	if(num.size()!=0){
-		double in_num = stod(num);
-		if(c == -1)	
-			printf("%d: %*.0f",0,width,in_num);
-		else
-		if(c == num.size()-1)
-			printf("%d: %*.*f.",0,width-1,num.size()-c-1,in_num);
-		else
-			printf("%d: %*.*f",0,width,num.size()-c-1,in_num);
-	}else{
-		printf("%d:",0,0);
+	// Decimal places
+	int c = get_dec_plcs(in_buf);
+
+	// If input buffer empty
+	if(in_buf.size() == 0){
+		printf("%d:",0);
 		for(int i = 0; i < width; i++)
 			printf(" ");
+	}
+
+	// If input buffer not empty
+	else{
+
+		// Numerical input from buffer
+		double num_in = stod(in_buf);
+
+		// No decimal point
+		if(c == -1)	
+		printf("%d: %*.0f",0,width,num_in);
+		else
+
+		// Decimal point, places=0
+		if(c == in_buf.size()-1)
+		printf("%d: %*.*f.",0,width-1,in_buf.size()-c-1,num_in);
+		else
+
+		// Decimal point, places>=0
+		printf("%d: %*.*f",0,width,in_buf.size()-c-1,num_in);
 	}
 
 }
