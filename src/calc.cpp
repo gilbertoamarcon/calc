@@ -35,6 +35,12 @@ int main(){
 		c = getchar();
 		system("/bin/stty cooked");
 
+		// Quit
+		if(c == 3){
+			system("tput reset");
+			return 0;
+		}
+
 		// Stack restore
 		if(c == 'R' || c == 'r'){
 			stk = stk_bkp;
@@ -43,12 +49,6 @@ int main(){
 
 		// Stack backup
 		stk_bkp = stk;
-
-		// Quit
-		if(c == 3){
-			system("tput reset");
-			return 0;
-		}
 
 		// Help
 		if(c == 'H' || c == 'h'){
@@ -134,6 +134,11 @@ int main(){
 			}
 			case '^':{
 				double r = pow(a,b);
+				stk.push(r);
+				break;
+			}
+			case 'L': case 'l':{
+				double r = log(a)/log(b);
 				stk.push(r);
 				break;
 			}
