@@ -77,7 +77,10 @@ int main(){
 		}
 
 		// If ENTER, stack or duplicate
-		if(c == 13){
+		// Getting terminal dimensions
+		struct winsize size;
+		ioctl(STDOUT_FILENO,TIOCGWINSZ,&size);
+		if(c == 13 && stack.size() < size.ws_row-1){
 
 			// Stack input buffer
 			if(in_buf.size()!=0){
@@ -99,6 +102,8 @@ int main(){
 
 		// If numerical concatenate input buffer
 		if((c >= '0' && c <= '9') || (c == '.' && get_dec_plcs(in_buf) == -1)){
+			if(c == '.' && in_buf.size()==0)
+				in_buf += std::string(1,'0');
 			in_buf += std::string(1,c);
 			continue;
 		}
@@ -169,10 +174,13 @@ void display(std::stack<double> raw_stack, std::string in_buf, int dec_plcs){
 		raw_stack.pop();
 	}
 
+	// Stack index size
+	int stack_index = (stack.size()==0)?1:1+log((double)stack.size())/log(10);
+
 	// Getting terminal dimensions
 	struct winsize size;
 	ioctl(STDOUT_FILENO,TIOCGWINSZ,&size);
-	int width = size.ws_col-3;
+	int width = size.ws_col-2-stack_index;
 	
 	// Cleargin screen
 	system("tput reset");
@@ -184,7 +192,7 @@ void display(std::stack<double> raw_stack, std::string in_buf, int dec_plcs){
 	// Printing stack
 	int i = stack.size(); 
 	while(!stack.empty()){
-		printf("%d: %*.*f\n",i--,width,dec_plcs,stack.top());
+		printf("%*d: %*.*f\n",stack_index,i--,width,dec_plcs,stack.top());
 		stack.pop();
 	}
 
@@ -193,7 +201,7 @@ void display(std::stack<double> raw_stack, std::string in_buf, int dec_plcs){
 
 	// If input buffer empty
 	if(in_buf.size() == 0){
-		printf("%d:",0);
+		printf("%*d:",stack_index,0);
 		for(int i = 0; i < width; i++)
 			printf(" ");
 	}
@@ -206,16 +214,16 @@ void display(std::stack<double> raw_stack, std::string in_buf, int dec_plcs){
 
 		// No decimal point
 		if(c == -1)	
-		printf("%d: %*.0f",0,width,num_in);
+		printf("%*d: %*.0f",stack_index,0,width,num_in);
 		else
 
 		// Decimal point, places=0
 		if(c == in_buf.size()-1)
-		printf("%d: %*.*f.",0,width-1,in_buf.size()-c-1,num_in);
+		printf("%*d: %*.*f.",stack_index,0,width-1,in_buf.size()-c-1,num_in);
 		else
 
 		// Decimal point, places>=0
-		printf("%d: %*.*f",0,width,in_buf.size()-c-1,num_in);
+		printf("%*d: %*.*f",stack_index,0,width,in_buf.size()-c-1,num_in);
 	}
 
 }
